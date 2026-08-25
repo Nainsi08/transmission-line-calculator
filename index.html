@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Line Constants — Transmission Line Parameter Calculator</title>
+<meta name="description" content="Compute total resistance, inductance and capacitance of overhead transmission lines from conductor and geometry data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef1f5;
+    --panel:#ffffff;
+    --panel-2:#f7f9fb;
+    --border:#dbe2ea;
+    --border-strong:#c3cddb;
+    --navy:#0f2138;
+    --navy-2:#1e3a5f;
+    --ink:#16232f;
+    --muted:#5b6b7c;
+    --copper:#b5723a;
+    --copper-dark:#8f5a2c;
+    --copper-tint:#f4e3d3;
+    --teal:#2f7a73;
+    --teal-tint:#dcede9;
+    --danger:#b3452f;
+    --radius:10px;
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+    --sans:'Inter', -apple-system, sans-serif;
+    --display:'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); line-height:1.5; font-size:15px;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--copper-dark);}
+
+  /* ---------- header ---------- */
+  header.top{
+    background:linear-gradient(180deg,#0f2138 0%,#132a45 100%);
+    color:#eef3f8; padding:36px 6vw 30px;
+    border-bottom:3px solid var(--copper);
+  }
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:#e4a96e; display:flex; align-items:center; gap:10px; margin-bottom:12px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:#e4a96e;display:inline-block;}
+  header.top h1{
+    font-family:var(--display); font-weight:700; font-size:clamp(26px,3.4vw,40px);
+    margin:0 0 10px; letter-spacing:-0.01em;
+  }
+  header.top p{margin:0; max-width:640px; color:#aebdcd; font-size:15px;}
+  .top-meta{
+    display:flex; flex-wrap:wrap; gap:22px; margin-top:22px; font-family:var(--mono); font-size:12px; color:#8fa3b8;
+  }
+  .top-meta b{color:#dfe9f2; font-weight:600;}
+
+  /* ---------- layout ---------- */
+  main{max-width:1280px; margin:0 auto; padding:34px 6vw 90px; display:grid; grid-template-columns:1fr 380px; gap:28px; align-items:start;}
+  @media (max-width:980px){ main{grid-template-columns:1fr;} .side{position:static !important;} }
+
+  section.card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:26px 26px 28px; margin-bottom:20px;
+  }
+  .step-head{display:flex; align-items:baseline; gap:14px; margin-bottom:6px;}
+  .step-num{
+    font-family:var(--mono); font-weight:600; font-size:13px; color:var(--copper-dark);
+    background:var(--copper-tint); border:1px solid #e6c8a8; padding:2px 9px; border-radius:20px; flex:none;
+  }
+  .step-head h2{font-family:var(--display); font-size:19px; margin:0; font-weight:600;}
+  .step-sub{color:var(--muted); font-size:13.5px; margin:4px 0 18px 0;}
+
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:14px;}
+  .field-row.three{grid-template-columns:1fr 1fr 1fr;}
+  @media (max-width:600px){.field-row, .field-row.three{grid-template-columns:1fr;}}
+  label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px; font-weight:500;}
+  label .unit{color:#93a4b5; font-family:var(--mono); font-weight:400;}
+  input[type=number], input[type=text], select{
+    width:100%; padding:10px 12px; border:1px solid var(--border-strong); border-radius:7px;
+    font-family:var(--mono); font-size:14px; background:#fbfcfd; color:var(--ink);
+  }
+  input:focus, select:focus{outline:none; border-color:var(--copper); box-shadow:0 0 0 3px var(--copper-tint);}
+
+  .choice-group{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
+  .choice{
+    flex:1; min-width:130px; border:1px solid var(--border-strong); border-radius:8px; padding:12px 14px;
+    cursor:pointer; background:var(--panel-2); transition:border-color .15s, background .15s;
+  }
+  .choice:hover{border-color:var(--copper);}
+  .choice.active{border-color:var(--copper); background:var(--copper-tint);}
+  .choice .t{font-weight:600; font-size:13.5px;}
+  .choice .d{font-size:12px; color:var(--muted); margin-top:2px;}
+
+  .subpanel{
+    border-left:3px solid var(--copper); background:var(--panel-2); border-radius:0 8px 8px 0;
+    padding:16px 18px 4px; margin-top:6px;
+  }
+  .hidden{display:none !important;}
+
+  table.coord{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:13px; margin-top:6px;}
+  table.coord th{text-align:left; color:var(--muted); font-weight:500; padding:4px 8px; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em;}
+  table.coord td{padding:4px 8px;}
+  table.coord input{padding:7px 8px;}
+
+  .btn{
+    font-family:var(--sans); font-weight:600; font-size:13.5px; border:none; border-radius:7px;
+    padding:10px 18px; cursor:pointer; transition:transform .1s, background .15s;
+  }
+  .btn-primary{background:var(--navy); color:#fff;}
+  .btn-primary:hover{background:#0c1c30;}
+  .btn-copper{background:var(--copper); color:#fff;}
+  .btn-copper:hover{background:var(--copper-dark);}
+  .btn-ghost{background:transparent; color:var(--navy); border:1px solid var(--border-strong);}
+  .btn-ghost:hover{border-color:var(--navy);}
+  .btn:active{transform:translateY(1px);}
+  .btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:6px;}
+
+  .note{font-size:12.5px; color:var(--muted); background:var(--panel-2); border:1px dashed var(--border-strong); padding:10px 12px; border-radius:7px; margin-top:14px;}
+
+  /* ---------- sticky side ---------- */
+  .side{position:sticky; top:20px; display:flex; flex-direction:column; gap:18px;}
+  .diagram-card{background:var(--navy); border-radius:var(--radius); padding:18px 18px 8px; color:#cfdbe8;}
+  .diagram-card h3{font-family:var(--display); font-size:13px; margin:0 0 8px; text-transform:uppercase; letter-spacing:.08em; color:#e4a96e; font-weight:600;}
+  .diagram-card svg{width:100%; height:auto; display:block;}
+
+  .results-card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px;}
+  .results-card h3{font-family:var(--display); font-size:14px; margin:0 0 14px; letter-spacing:.02em;}
+  .res-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .res-item{background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:12px 12px;}
+  .res-item .lbl{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:600;}
+  .res-item .val{font-family:var(--mono); font-size:18px; font-weight:600; margin-top:4px; color:var(--navy);}
+  .res-item .val small{font-size:12px; font-weight:500; color:var(--muted);}
+  .res-item.wide{grid-column:1/-1;}
+
+  /* detailed report */
+  .report-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px 24px;}
+  @media (max-width:700px){.report-grid{grid-template-columns:1fr;}}
+  .kv{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--border);}
+  .kv .k{color:var(--muted); font-size:13px;}
+  .kv .v{font-family:var(--mono); font-size:13.5px; font-weight:600;}
+  .formula{
+    font-family:var(--mono); background:var(--navy); color:#dce8f3; padding:12px 14px; border-radius:7px;
+    font-size:13px; overflow-x:auto; margin:8px 0 16px;
+  }
+  .formula .op{color:#e4a96e;}
+  h4.sub{font-family:var(--display); font-size:14.5px; margin:22px 0 8px; color:var(--navy-2); border-top:1px solid var(--border); padding-top:18px;}
+  h4.sub:first-of-type{border-top:none; padding-top:0; margin-top:0;}
+
+  footer{max-width:1280px; margin:0 auto; padding:0 6vw 60px; color:var(--muted); font-size:12.5px;}
+  footer a{color:var(--muted); text-decoration:underline;}
+
+  ::selection{background:var(--copper-tint);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="eyebrow"><span class="dot"></span>EE315 · Power System Analysis · Module 2</div>
+  <h1>Transmission Line Constants Calculator</h1>
+  <p>Enter conductor construction, phase geometry, resistivity and line length once — resistance, inductance and capacitance are computed and updated live from first principles, following the assignment flowchart step by step.</p>
+  <div class="top-meta">
+    <span><b>Method</b> GMR / GMD geometric mean distance approach</span>
+    <span><b>Outputs</b> R, L, C, X<sub>L</sub>, X<sub>C</sub></span>
+    <span><b>Deploy</b> static, no backend</span>
+  </div>
+</header>
+
+<main>
+  <!-- ========================= FORM COLUMN ========================= -->
+  <div class="form-col">
+
+    <!-- STEP 1 -->
+    <section class="card">
+      <div class="step-head"><span class="step-num">01</span><h2>Conductor strands</h2></div>
+      <div class="step-sub">Are the conductors made of a single solid strand, or built up from multiple strands (a bundle, or a composite conductor like ACSR)?</div>
+
+      <div class="choice-group" id="strandChoice">
+        <div class="choice active" data-value="single">
+          <div class="t">Single strand</div>
+          <div class="d">One solid round conductor per phase</div>
+        </div>
+        <div class="choice" data-value="multiple">
+          <div class="t">Multiple strands</div>
+          <div class="d">Bundle conductor or ACSR</div>
+        </div>
+      </div>
+
+      <!-- single strand fields -->
+      <div id="panel-single">
+        <div class="field-row">
+          <div>
+            <label>Radius of conductor <span class="unit">(mm)</span></label>
+            <input type="number" id="singleRadius" value="10" min="0" step="0.1">
+          </div>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- multiple strand fields -->
+      <div id="panel-multiple" class="hidden">
+        <label>Type of conductor</label>
+        <div class="choice-group" id="bundleChoice">
+          <div class="choice active" data-value="2">2-bundle</div>
+          <div class="choice" data-value="3">3-bundle</div>
+          <div class="choice" data-value="4">4-bundle</div>
+          <div class="choice" data-value="acsr">6/1 ACSR</div>
+        </div>
+
+        <div class="field-row">
+          <div>
+            <label>Radius of each strand <span class="unit">(mm)</span></label>
+            <input type="number" id="strandRadius" value="3.5" min="0" step="0.1">
+          </div>
+          <div id="spacingField">
+            <label>Bundle spacing, d <span class="unit">(mm, between adjacent sub‑conductors)</span></label>
+            <input type="number" id="bundleSpacing" value="450" min="0" step="1">
+          </div>
+        </div>
+        <div class="note" id="acsrNote">6/1 ACSR: 6 aluminium strands around 1 steel core strand (all strands equal radius, hexagonally close‑packed). The steel core is treated as non‑current‑carrying; GMR ≈ 2.176·r, overall radius ≈ 3·r.</div>
+      </div>
+
+      <div class="note" id="gmrOut">Equivalent GMR and conductor radius will appear here once values are entered.</div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="card">
+      <div class="step-head"><span class="step-num">02</span><h2>System type</h2></div>
+      <div class="step-sub">Choose single‑phase or three‑phase, and — for three‑phase — a single or double circuit tower.</div>
+
+      <div class="choice-group" id="systemChoice">
+        <div class="choice active" data-value="single">
+          <div class="t">Single phase</div>
+          <div class="d">Two conductors, distance D apart</div>
+        </div>
+        <div class="choice" data-value="three">
+          <div class="t">Three phase</div>
+          <div class="d">Single or double circuit</div>
+        </div>
+      </div>
+
+      <!-- single phase -->
+      <div id="panel-singlephase">
+        <div class="field-row">
+          <div>
+            <label>Distance between conductors, D <span class="unit">(m)</span></label>
+            <input type="number" id="D_sp" value="4" min="0" step="0.1">
+          </div>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- three phase -->
+      <div id="panel-threephase" class="hidden">
+        <label>Circuit arrangement</label>
+        <div class="choice-group" id="circuitChoice">
+          <div class="choice active" data-value="single">
+            <div class="t">Single circuit</div>
+            <div class="d">One set of a‑b‑c conductors</div>
+          </div>
+          <div class="choice" data-value="double">
+            <div class="t">Double circuit</div>
+            <div class="d">Two parallel a‑b‑c sets on one tower</div>
+          </div>
+        </div>
+
+        <!-- single circuit -->
+        <div id="panel-3p-single">
+          <div class="field-row three">
+            <div><label>D₁₂ <span class="unit">(m)</span></label><input type="number" id="D12" value="4" step="0.1"></div>
+            <div><label>D₂₃ <span class="unit">(m)</span></label><input type="number" id="D23" value="4" step="0.1"></div>
+            <div><label>D₃₁ <span class="unit">(m)</span></label><input type="number" id="D31" value="8" step="0.1"></div>
+          </div>
+        </div>
+
+        <!-- double circuit -->
+        <div id="panel-3p-double" class="hidden">
+          <div class="note" style="margin-top:0 6px 14px">Generalised geometry: enter the (x, y) position in metres of every conductor. GMD and self‑GMD are then computed exactly from the coordinates instead of a fixed template — this is what makes the method work for <em>any</em> tower layout, flat or vertical.</div>
+          <table class="coord">
+            <tr><th>Conductor</th><th>x (m)</th><th>y (m)</th></tr>
+            <tr><td>a</td><td><input type="number" id="ax" value="0" step="0.1"></td><td><input type="number" id="ay" value="10" step="0.1"></td></tr>
+            <tr><td>b</td><td><input type="number" id="bx" value="0" step="0.1"></td><td><input type="number" id="by" value="7" step="0.1"></td></tr>
+            <tr><td>c</td><td><input type="number" id="cx" value="0" step="0.1"></td><td><input type="number" id="cy" value="4" step="0.1"></td></tr>
+            <tr><td>a′</td><td><input type="number" id="a2x" value="4" step="0.1"></td><td><input type="number" id="a2y" value="10" step="0.1"></td></tr>
+            <tr><td>b′</td><td><input type="number" id="b2x" value="4" step="0.1"></td><td><input type="number" id="b2y" value="7" step="0.1"></td></tr>
+            <tr><td>c′</td><td><input type="number" id="c2x" value="4" step="0.1"></td><td><input type="number" id="c2y" value="4" step="0.1"></td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="note" id="gmdOut">Equivalent GMD will appear here once geometry is entered.</div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="card">
+      <div class="step-head"><span class="step-num">03</span><h2>Line data</h2></div>
+      <div class="step-sub">Resistivity of the conductor material, total line length, and system frequency (for reactance).</div>
+      <div class="field-row three">
+        <div>
+          <label>Resistivity, ρ <span class="unit">(Ω·m, ×10⁻⁸)</span></label>
+          <input type="number" id="rho" value="2.83" min="0" step="0.01">
+        </div>
+        <div>
+          <label>Line length, l <span class="unit">(km)</span></label>
+          <input type="number" id="length" value="100" min="0" step="1">
+        </div>
+        <div>
+          <label>Frequency, f <span class="unit">(Hz)</span></label>
+          <input type="number" id="freq" value="50" min="0" step="1">
+        </div>
+      </div>
+      <div class="note">Default resistivity 2.83×10⁻⁸ Ω·m is annealed aluminium at 20 °C. Use ≈1.72×10⁻⁸ for copper.</div>
+
+      <div class="btn-row">
+        <button class="btn btn-copper" id="loadExample">Load example values</button>
+        <button class="btn btn-ghost" id="resetAll">Reset form</button>
+      </div>
+    </section>
+
+    <!-- RESULTS / REPORT -->
+    <section class="card" id="reportCard">
+      <div class="step-head"><span class="step-num">04</span><h2>Detailed results &amp; report</h2></div>
+      <div class="step-sub">Full breakdown of every quantity used to reach R, L and C, with the governing formulas.</div>
+
+      <h4 class="sub">Conductor geometry</h4>
+      <div class="report-grid" id="reportConductor"></div>
+
+      <h4 class="sub">Phase geometry</h4>
+      <div class="report-grid" id="reportGeometry"></div>
+
+      <h4 class="sub">Per‑phase, per‑unit‑length constants</h4>
+      <div class="formula" id="formulaBlock"></div>
+      <div class="report-grid" id="reportPerUnit"></div>
+
+      <h4 class="sub">Totals for the full line</h4>
+      <div class="report-grid" id="reportTotals"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="downloadReport">Download report (.txt)</button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ========================= SIDE COLUMN ========================= -->
+  <div class="side">
+    <div class="diagram-card">
+      <h3>Live schematic</h3>
+      <svg id="diagram" viewBox="0 0 320 220"></svg>
+    </div>
+
+    <div class="results-card">
+      <h3>Result summary</h3>
+      <div class="res-grid">
+        <div class="res-item"><div class="lbl">Resistance</div><div class="val" id="bigR">–</div></div>
+        <div class="res-item"><div class="lbl">Inductance</div><div class="val" id="bigL">–</div></div>
+        <div class="res-item"><div class="lbl">Capacitance</div><div class="val" id="bigC">–</div></div>
+        <div class="res-item"><div class="lbl">Ind. reactance</div><div class="val" id="bigXL">–</div></div>
+        <div class="res-item wide"><div class="lbl">GMD / GMR</div><div class="val" id="bigGMD">–</div></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Built for EE315 Module‑2, Project/Assignment‑2 · Formulas follow the standard GMR/GMD (geometric mean radius / distance) method for overhead lines · Static page — works entirely in the browser, deployable as‑is on GitHub Pages.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const MU0 = 4*Math.PI*1e-7;
+  const EPS0 = 8.854e-12;
+
+  const state = { strandType:'single', bundleType:'2', systemType:'single', circuitType:'single' };
+
+  /* ---------- choice-group helper ---------- */
+  function wireChoiceGroup(groupId, onChange){
+    const group = $(groupId);
+    group.querySelectorAll('.choice').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        group.querySelectorAll('.choice').forEach(c=>c.classList.remove('active'));
+        el.classList.add('active');
+        onChange(el.dataset.value);
+        recalc();
+      });
+    });
+  }
+
+  wireChoiceGroup('strandChoice', v=>{
+    state.strandType = v;
+    $('panel-single').classList.toggle('hidden', v!=='single');
+    $('panel-multiple').classList.toggle('hidden', v!=='multiple');
+  });
+  wireChoiceGroup('bundleChoice', v=>{
+    state.bundleType = v;
+    const isAcsr = v==='acsr';
+    $('spacingField').classList.toggle('hidden', isAcsr);
+    $('acsrNote').classList.toggle('hidden', !isAcsr);
+  });
+  wireChoiceGroup('systemChoice', v=>{
+    state.systemType = v;
+    $('panel-singlephase').classList.toggle('hidden', v!=='single');
+    $('panel-threephase').classList.toggle('hidden', v!=='three');
+  });
+  wireChoiceGroup('circuitChoice', v=>{
+    state.circuitType = v;
+    $('panel-3p-single').classList.toggle('hidden', v!=='single');
+    $('panel-3p-double').classList.toggle('hidden', v!=='double');
+  });
+  // init hidden panels correctly
+  $('spacingField').classList.remove('hidden');
+  $('acsrNote').classList.add('hidden');
+
+  document.querySelectorAll('input').forEach(inp=> inp.addEventListener('input', recalc));
+
+  /* ---------- geometry helpers ---------- */
+  function dist(p1,p2){ return Math.hypot(p1.x-p2.x, p1.y-p2.y); }
+  function num(id){ const v = parseFloat($(id).value); return isNaN(v) ? 0 : v; }
+  function fmtNum(v, d=4){
+    if(!isFinite(v)) return '—';
+    if(Math.abs(v) >= 1000 || (Math.abs(v)<0.001 && v!==0)) return v.toExponential(3);
+    return v.toFixed(d);
+  }
+  function fmtEng(value, unit){
+    if(!isFinite(value)) return '—';
+    const abs = Math.abs(value);
+    const table = [[1e9,'G'],[1e6,'M'],[1e3,'k'],[1,''],[1e-3,'m'],[1e-6,'µ'],[1e-9,'n'],[1e-12,'p'],[1e-15,'f']];
+    for(const [scale,prefix] of table){
+      if(abs>=scale || scale===1e-15){
+        const scaled = value/scale;
+        return `${scaled.toFixed(scaled>=100?1:scaled>=10?2:3)} <small>${prefix}${unit}</small>`;
+      }
+    }
+    return value+ ' '+unit;
+  }
+
+  /* ---------- conductor (GMR / equivalent radius / conducting area) ---------- */
+  function conductorGeometry(){
+    let GMR, rEq, area, strandsConducting, note;
+    if(state.strandType === 'single'){
+      const r = num('singleRadius')/1000;
+      GMR = 0.7788*r;
+      rEq = r;
+      area = Math.PI*r*r;
+      note = `Single solid conductor, r = ${num('singleRadius')} mm.`;
+    } else {
+      const rs = num('strandRadius')/1000;
+      if(state.bundleType === 'acsr'){
+        GMR = 2.176*rs;
+        rEq = 3*rs;
+        area = 6*Math.PI*rs*rs;
+        note = `6/1 ACSR, strand r = ${num('strandRadius')} mm — 6 aluminium strands conduct, 1 steel core does not.`;
+      } else {
+        const n = parseInt(state.bundleType,10);
+        const d = num('bundleSpacing')/1000;
+        const rsGMR = 0.7788*rs;
+        if(n===2){ GMR = Math.sqrt(rsGMR*d); rEq = Math.sqrt(rs*d); }
+        else if(n===3){ GMR = Math.cbrt(rsGMR*d*d); rEq = Math.cbrt(rs*d*d); }
+        else { GMR = 1.09*Math.pow(rsGMR*Math.pow(d,3), 0.25); rEq = 1.09*Math.pow(rs*Math.pow(d,3), 0.25); }
+        area = n*Math.PI*rs*rs;
+        note = `${n}-bundle, strand r = ${num('strandRadius')} mm, spacing d = ${num('bundleSpacing')} mm.`;
+      }
+    }
+    return {GMR, rEq, area, note};
+  }
+
+  /* ---------- GMD / self-GMD ---------- */
+  function phaseGeometry(cond){
+    let GMD, Ds_L, Ds_C, areaFactor=1, note;
+    if(state.systemType === 'single'){
+      GMD = num('D_sp');
+      Ds_L = cond.GMR;
+      Ds_C = cond.rEq;
+      note = `Single phase, D = ${GMD} m.`;
+    } else if(state.circuitType === 'single'){
+      const D12=num('D12'), D23=num('D23'), D31=num('D31');
+      GMD = Math.cbrt(D12*D23*D31);
+      Ds_L = cond.GMR;
+      Ds_C = cond.rEq;
+      note = `Three phase, single circuit. D₁₂=${D12} m, D₂₃=${D23} m, D₃₁=${D31} m.`;
+    } else {
+      const P = id => ({x:num(id+'x'), y:num(id+'y')});
+      const a=P('a'), b=P('b'), c=P('c'), a2=P('a2'), b2=P('b2'), c2=P('c2');
+      const Dab = Math.pow(dist(a,b)*dist(a,b2)*dist(a2,b)*dist(a2,b2), 0.25);
+      const Dbc = Math.pow(dist(b,c)*dist(b,c2)*dist(b2,c)*dist(b2,c2), 0.25);
+      const Dca = Math.pow(dist(c,a)*dist(c,a2)*dist(c2,a)*dist(c2,a2), 0.25);
+      GMD = Math.cbrt(Dab*Dbc*Dca);
+      const Daa = dist(a,a2), Dbb = dist(b,b2), Dcc = dist(c,c2);
+      const DsA = Math.sqrt(cond.GMR*Daa), DsB = Math.sqrt(cond.GMR*Dbb), DsC = Math.sqrt(cond.GMR*Dcc);
+      Ds_L = Math.cbrt(DsA*DsB*DsC);
+      const DcA = Math.sqrt(cond.rEq*Daa), DcB = Math.sqrt(cond.rEq*Dbb), DcC = Math.sqrt(cond.rEq*Dcc);
+      Ds_C = Math.cbrt(DcA*DcB*DcC);
+      areaFactor = 2; // two conductors in parallel per phase
+      note = `Three phase, double circuit — computed from six conductor coordinates (D_AB=${fmtNum(Dab,3)} m, D_BC=${fmtNum(Dbc,3)} m, D_CA=${fmtNum(Dca,3)} m).`;
+    }
+    return {GMD, Ds_L, Ds_C, areaFactor, note};
+  }
+
+  /* ---------- main calculation ---------- */
+  function recalc(){
+    const cond = conductorGeometry();
+    const geo = phaseGeometry(cond);
+
+    const rho = num('rho')*1e-8;   // Ω·m
+    const lengthKm = num('length');
+    const lengthM = lengthKm*1000;
+    const freq = num('freq');
+
+    const areaEff = cond.area*geo.areaFactor;
+    const R_per_m = areaEff>0 ? rho/areaEff : NaN;
+    const L_per_m = 2e-7*Math.log(geo.GMD/geo.Ds_L);          // H/m per phase
+    const C_per_m = (2*Math.PI*EPS0)/Math.log(geo.GMD/geo.Ds_C); // F/m per phase (line-to-neutral)
+
+    const R_total = R_per_m*lengthM;
+    const L_total = L_per_m*lengthM;
+    const C_total = C_per_m*lengthM;
+    const XL_total = 2*Math.PI*freq*L_total;
+    const XC_total = C_total>0 ? 1/(2*Math.PI*freq*C_total) : NaN;
+
+    // ---- side summary ----
+    $('bigR').innerHTML = fmtEng(R_total,'Ω');
+    $('bigL').innerHTML = fmtEng(L_total,'H');
+    $('bigC').innerHTML = fmtEng(C_total,'F');
+    $('bigXL').innerHTML = fmtEng(XL_total,'Ω');
+    $('bigGMD').innerHTML = `${fmtNum(geo.GMD,3)} m <small>/ ${fmtNum(cond.GMR*1000,3)} mm</small>`;
+
+    // ---- notes under steps 1 & 2 ----
+    $('gmrOut').innerHTML = `<b>GMR</b> = ${fmtNum(cond.GMR*1000,4)} mm &nbsp;·&nbsp; <b>Equivalent radius (for C)</b> = ${fmtNum(cond.rEq*1000,4)} mm &nbsp;·&nbsp; <b>Conducting area</b> = ${fmtNum(cond.area*1e6,3)} mm² — ${cond.note}`;
+    $('gmdOut').innerHTML = `<b>GMD</b> = ${fmtNum(geo.GMD,4)} m — ${geo.note}`;
+
+    // ---- detailed report ----
+    $('reportConductor').innerHTML = kv([
+      ['Strand construction', state.strandType==='single' ? 'Single solid conductor' : (state.bundleType==='acsr' ? '6/1 ACSR' : state.bundleType+'-bundle')],
+      ['Self GMR (for L)', fmtNum(cond.GMR*1000,4)+' mm'],
+      ['Equivalent radius (for C)', fmtNum(cond.rEq*1000,4)+' mm'],
+      ['Conducting cross‑section', fmtNum(cond.area*1e6,3)+' mm²'],
+    ]);
+    $('reportGeometry').innerHTML = kv([
+      ['System', state.systemType==='single' ? 'Single phase' : 'Three phase — '+(state.circuitType==='single'?'single circuit':'double circuit')],
+      ['Geometric Mean Distance, GMD', fmtNum(geo.GMD,4)+' m'],
+      ['Self‑GMD used for L, Dₛ', fmtNum(geo.Ds_L*1000,4)+' mm'],
+      ['Self‑distance used for C', fmtNum(geo.Ds_C*1000,4)+' mm'],
+    ]);
+    $('formulaBlock').innerHTML =
+`R' <span class="op">=</span> ρ / A            <span class="op">→</span> resistance per unit length
+L' <span class="op">=</span> 2×10⁻⁷ · ln(GMD / Dₛ)     <span class="op">→</span> henry per metre, per phase
+C' <span class="op">=</span> 2π·ε₀ / ln(GMD / r_eq)     <span class="op">→</span> farad per metre, per phase (line‑to‑neutral)`;
+    $('reportPerUnit').innerHTML = kv([
+      ["R' (per km)", fmtEng(R_per_m*1000,'Ω/km')],
+      ["L' (per km)", fmtEng(L_per_m*1000,'H/km')],
+      ["C' (per km)", fmtEng(C_per_m*1000,'F/km')],
+    ]);
+    $('reportTotals').innerHTML = kv([
+      ['Line length', lengthKm+' km'],
+      ['Total resistance, R', fmtEng(R_total,'Ω')],
+      ['Total inductance, L', fmtEng(L_total,'H')],
+      ['Total capacitance, C', fmtEng(C_total,'F')],
+      ['Inductive reactance, X_L', fmtEng(XL_total,'Ω')+ ` <small>(at ${freq} Hz)</small>`],
+      ['Capacitive reactance, X_C', fmtEng(XC_total,'Ω')+ ` <small>(at ${freq} Hz)</small>`],
+    ]);
+
+    drawDiagram(cond, geo);
+    window.__lastResult = {cond, geo, R_total, L_total, C_total, XL_total, XC_total, rho, lengthKm, freq};
+  }
+
+  function kv(pairs){
+    return pairs.map(([k,v])=>`<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  }
+
+  /* ---------- live SVG schematic ---------- */
+  function drawDiagram(cond, geo){
+    const svg = $('diagram');
+    const W=320, H=220;
+    let inner = '';
+    const copper = '#e4a96e', wire='#4d647d', text='#cfdbe8';
+
+    function tower(){ return `<line x1="160" y1="18" x2="160" y2="205" stroke="${wire}" stroke-width="4"/>
+      <line x1="120" y1="205" x2="200" y2="205" stroke="${wire}" stroke-width="4"/>`; }
+
+    if(state.systemType==='single'){
+      inner = tower() +
+        `<line x1="90" y1="70" x2="230" y2="70" stroke="${wire}" stroke-width="2"/>
+         <circle cx="115" cy="70" r="9" fill="${copper}"/>
+         <circle cx="205" cy="70" r="9" fill="${copper}"/>
+         <text x="115" y="55" fill="${text}" font-size="12" text-anchor="middle">1</text>
+         <text x="205" y="55" fill="${text}" font-size="12" text-anchor="middle">2</text>
+         <text x="160" y="92" fill="${text}" font-size="11" text-anchor="middle">D = ${fmtNum(geo.GMD,2)} m</text>`;
+    } else if(state.circuitType==='single'){
+      inner = tower() +
+        `<line x1="80" y1="60" x2="240" y2="60" stroke="${wire}" stroke-width="2"/>
+         <circle cx="100" cy="60" r="9" fill="${copper}"/>
+         <circle cx="160" cy="60" r="9" fill="${copper}"/>
+         <circle cx="220" cy="60" r="9" fill="${copper}"/>
+         <text x="100" y="45" fill="${text}" font-size="12" text-anchor="middle">a</text>
+         <text x="160" y="45" fill="${text}" font-size="12" text-anchor="middle">b</text>
+         <text x="220" y="45" fill="${text}" font-size="12" text-anchor="middle">c</text>
+         <text x="160" y="86" fill="${text}" font-size="11" text-anchor="middle">GMD = ${fmtNum(geo.GMD,2)} m</text>`;
+    } else {
+      const P = id => ({x:num(id+'x'), y:num(id+'y')});
+      const pts = {a:P('a'), b:P('b'), c:P('c'), a2:P('a2'), b2:P('b2'), c2:P('c2')};
+      const xs = Object.values(pts).map(p=>p.x), ys = Object.values(pts).map(p=>p.y);
+      const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+      const pad=40;
+      const sx = x => pad + (maxX-minX===0?0:(x-minX)/(maxX-minX))*(W-2*pad);
+      const sy = y => (H-20) - (maxY-minY===0?0:(y-minY)/(maxY-minY))*(H-50);
+      let circles='';
+      Object.entries(pts).forEach(([k,p])=>{
+        circles += `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="8" fill="${copper}"/>
+          <text x="${sx(p.x)}" y="${sy(p.y)-12}" fill="${text}" font-size="11" text-anchor="middle">${k.replace('2',"′")}</text>`;
+      });
+      inner = circles + `<text x="${W/2}" y="16" fill="${text}" font-size="11" text-anchor="middle">GMD = ${fmtNum(geo.GMD,2)} m</text>`;
+    }
+    svg.innerHTML = inner;
+  }
+
+  /* ---------- example + reset ---------- */
+  $('loadExample').addEventListener('click', ()=>{
+    document.querySelector('#strandChoice .choice[data-value="multiple"]').click();
+    document.querySelector('#bundleChoice .choice[data-value="2"]').click();
+    $('strandRadius').value = 15.2; $('bundleSpacing').value = 400;
+    document.querySelector('#systemChoice .choice[data-value="three"]').click();
+    document.querySelector('#circuitChoice .choice[data-value="single"]').click();
+    $('D12').value=8; $('D23').value=8; $('D31').value=16;
+    $('rho').value=2.83; $('length').value=150; $('freq').value=50;
+    recalc();
+  });
+  $('resetAll').addEventListener('click', ()=>{
+    document.querySelectorAll('input[type=number]').forEach(i=>i.value='');
+    recalc();
+  });
+
+  /* ---------- download report ---------- */
+  $('downloadReport').addEventListener('click', ()=>{
+    const r = window.__lastResult;
+    if(!r) return;
+    const lines = [
+      'TRANSMISSION LINE PARAMETER REPORT',
+      '===================================',
+      '',
+      `Conductor construction : ${state.strandType==='single' ? 'Single solid conductor' : (state.bundleType==='acsr' ? '6/1 ACSR' : state.bundleType+'-bundle')}`,
+      `Self GMR (for L)        : ${fmtNum(r.cond.GMR*1000,4)} mm`,
+      `Equivalent radius (C)   : ${fmtNum(r.cond.rEq*1000,4)} mm`,
+      `Conducting area         : ${fmtNum(r.cond.area*1e6,3)} mm^2`,
+      '',
+      `System                  : ${state.systemType==='single' ? 'Single phase' : 'Three phase, '+(state.circuitType==='single'?'single circuit':'double circuit')}`,
+      `GMD                     : ${fmtNum(r.geo.GMD,4)} m`,
+      `Self-GMD used for L     : ${fmtNum(r.geo.Ds_L*1000,4)} mm`,
+      `Self-distance used for C: ${fmtNum(r.geo.Ds_C*1000,4)} mm`,
+      '',
+      `Resistivity, rho        : ${r.rho.toExponential(3)} ohm.m`,
+      `Line length             : ${r.lengthKm} km`,
+      `Frequency               : ${r.freq} Hz`,
+      '',
+      'RESULTS',
+      '-------',
+      `Total resistance, R     : ${r.R_total.toExponential(5)} ohm`,
+      `Total inductance, L     : ${r.L_total.toExponential(5)} H`,
+      `Total capacitance, C    : ${r.C_total.toExponential(5)} F`,
+      `Inductive reactance, XL : ${r.XL_total.toExponential(5)} ohm`,
+      `Capacitive reactance, XC: ${r.XC_total.toExponential(5)} ohm`,
+      '',
+      'FORMULAS USED',
+      '-------------',
+      "R' = rho / A",
+      "L' = 2e-7 * ln(GMD / Ds)          [H/m, per phase]",
+      "C' = 2*pi*eps0 / ln(GMD / r_eq)   [F/m, per phase, line-to-neutral]",
+      '',
+      'Generated by the EE315 Transmission Line Constants Calculator.'
+    ].join('\n');
+    const blob = new Blob([lines], {type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'transmission-line-report.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  recalc();
+})();
+</script>
+</body>
+</html>
