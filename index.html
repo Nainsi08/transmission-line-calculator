@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transmission Line Constants Calculator</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --panel:#fff; --border:#d9e0e8; --ink:#1c2733;
+    --muted:#63707d; --accent:#b5723a; --accent-tint:#f4e3d3; --navy:#12233a;
+    --mono:'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:1.5;}
+  header{background:var(--navy); color:#fff; padding:26px 6vw;}
+  header h1{margin:0 0 6px; font-size:24px;}
+  header p{margin:0; color:#b7c3d0; font-size:14px; max-width:760px;}
+  main{max-width:860px; margin:0 auto; padding:30px 6vw 70px;}
+  section{background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:22px; margin-bottom:18px;}
+  h2{font-size:17px; margin:0 0 4px;}
+  h3{font-size:14px; margin:18px 0 8px; color:var(--navy);}
+  .step{font-family:var(--mono); font-size:12px; color:var(--accent); font-weight:bold;}
+  .hint{color:var(--muted); font-size:13px; margin:2px 0 16px;}
+  label{display:block; font-size:13px; color:var(--muted); margin-bottom:5px;}
+  input[type=number], input[type=text], select, textarea{
+    width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:5px;
+    font-family:var(--mono); font-size:13.5px; margin-bottom:14px; background:#fbfcfd;
+  }
+  textarea{resize:vertical; min-height:70px;}
+  input:focus, select:focus, textarea:focus{outline:none; border-color:var(--accent);}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;}
+  .row4{display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:14px;}
+  @media(max-width:620px){.row,.row3,.row4{grid-template-columns:1fr;}}
+  .hidden{display:none !important;}
+  .note{font-size:12.5px; color:var(--muted); background:#f7f9fb; border:1px dashed var(--border); padding:8px 10px; border-radius:5px; margin-bottom:14px;}
+  table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:13px; margin-bottom:10px;}
+  table th{text-align:left; color:var(--muted); font-weight:normal; padding:4px 6px; font-size:11px;}
+  table td{padding:3px 6px;}
+  table input{margin-bottom:0;}
+  .btn{font-size:13.5px; font-weight:bold; border:none; border-radius:5px; padding:9px 16px; cursor:pointer;}
+  .btn-accent{background:var(--accent); color:#fff;}
+  .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--navy);}
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 14px;}
+  .toggle-row{display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:13.5px;}
+  .toggle-row input[type=checkbox]{width:auto; margin:0;}
+  .adv{border-left:3px solid var(--accent); background:#faf6f1; border-radius:0 6px 6px 0; padding:14px 16px 2px; margin-top:6px;}
+  .results{background:var(--navy); color:#fff;}
+  .results h2{color:#fff;}
+  .res-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;}
+  @media(max-width:620px){.res-grid{grid-template-columns:1fr;}}
+  .res-item{background:rgba(255,255,255,.06); border-radius:6px; padding:12px;}
+  .res-item .lbl{font-size:11px; color:#9fb0c2; text-transform:uppercase;}
+  .res-item .val{font-family:var(--mono); font-size:18px; margin-top:4px;}
+  .formula-box{font-family:var(--mono); font-size:12px; background:#0d1826; color:#cfe0f0; padding:10px 12px; border-radius:5px; margin-top:14px; white-space:pre-line;}
+  footer{max-width:860px; margin:0 auto; padding:0 6vw 50px; color:var(--muted); font-size:12px;}
+  .banner{background:#fff7ea; border:1px solid #e9d6ac; color:#6b5423; font-size:13px; padding:12px 14px; border-radius:6px; margin-bottom:18px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Transmission Line Constants Calculator</h1>
+  <p>EE315 · Module 2 — generalized version. Handles arbitrary conductor construction (solid / N-bundle / N+1 composite / custom stranding), arbitrary phase-circuit geometry via coordinates, optional ground effect on capacitance, and temperature-corrected resistance — not just the one baseline case from the flowchart.</p>
+</header>
+
+<main>
+
+<div class="banner">This tool solves the flowchart's baseline case out of the box (defaults below already match it), and generalizes further so it can be pointed at most Module‑2 problems: any bundle size, composite/ACSR conductors of any strand count, single/double/triple circuit or custom coordinate layouts, ground effect on capacitance, and temperature‑corrected resistance.</div>
+
+  <!-- STEP 1 -->
+  <section>
+    <div class="step">STEP 1</div>
+    <h2>Conductor construction</h2>
+    <div class="hint">Define the physical conductor used on every phase. GMR (for L) and equivalent radius (for C) are derived from geometry, not looked up from a table.</div>
+
+    <label>Construction type</label>
+    <select id="condMode">
+      <option value="solid">Solid single conductor</option>
+      <option value="bundle" selected>N-conductor bundle</option>
+      <option value="composite">N+1 composite (generalized ACSR)</option>
+      <option value="custom">Custom strand layout (advanced)</option>
+    </select>
+
+    <div id="panel-solid" class="hidden">
+      <label>Radius of conductor (mm)</label>
+      <input type="number" id="solidR" value="10" step="0.1">
+    </div>
+
+    <div id="panel-bundle">
+      <div class="row3">
+        <div><label>Number of sub-conductors, n</label><input type="number" id="bundleN" value="2" step="1" min="2"></div>
+        <div><label>Strand radius, rₛ (mm)</label><input type="number" id="bundleR" value="15.2" step="0.1"></div>
+        <div><label>Spacing between adjacent strands, d (mm)</label><input type="number" id="bundleD" value="400" step="1"></div>
+      </div>
+      <div class="note">n sub-conductors assumed equally spaced on a circle (bundle ring). Works for any n ≥ 2 — not just 2/3/4-bundle; formula reduces to the textbook 2/3/4-bundle cases and the 1.09 correction factor automatically.</div>
+    </div>
+
+    <div id="panel-composite" class="hidden">
+      <div class="row3">
+        <div><label>Number of outer (conducting) strands, n</label><input type="number" id="compN" value="6" step="1" min="3"></div>
+        <div><label>Strand radius, rₛ (mm)</label><input type="number" id="compR" value="2.0" step="0.1"></div>
+        <div></div>
+      </div>
+      <div class="note">Generalized N/1 ACSR: n equal outer conducting strands touching a single non‑conducting core strand of the same radius (steel). Set n = 6 for the classic 6/1 ACSR. Overall radius = 3·rₛ; only the n outer strands carry current.</div>
+    </div>
+
+    <div id="panel-custom" class="hidden">
+      <label>Strand list — one per line: <code>x_mm, y_mm, radius_mm</code> (position relative to conductor centre)</label>
+      <textarea id="customStrands">0, 0, 2.0
+4.0, 0, 2.0
+2.0, 3.46, 2.0
+-2.0, 3.46, 2.0
+-4.0, 0, 2.0
+-2.0, -3.46, 2.0
+2.0, -3.46, 2.0</textarea>
+      <div class="note">List only current-carrying strands (omit any non-conducting steel core). GMR and equivalent radius are computed exactly from the full set of pairwise strand distances — this covers any real stranded or multi-layer conductor.</div>
+    </div>
+
+    <div class="note" id="gmrOut">GMR will appear here.</div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section>
+    <div class="step">STEP 2</div>
+    <h2>Phase &amp; circuit geometry</h2>
+    <div class="hint">Every conductor is placed by (x, y) coordinates in metres. This one method covers single phase, three phase (single or double or triple circuit), and asymmetric spacing — GMD and self‑GMD are always computed exactly from the positions given.</div>
+
+    <div class="row">
+      <div>
+        <label>System</label>
+        <select id="systemType">
+          <option value="single">Single phase (2 conductors)</option>
+          <option value="three" selected>Three phase</option>
+        </select>
+      </div>
+      <div>
+        <label>Circuits per phase (parallel conductors)</label>
+        <input type="number" id="circuits" value="1" step="1" min="1" max="6">
+      </div>
+    </div>
+
+    <h3>Quick layout presets</h3>
+    <div class="row3">
+      <div><label>Preset spacing, D (m)</label><input type="number" id="presetD" value="4" step="0.1"></div>
+      <div><label>Preset vertical spacing (double circuit, m)</label><input type="number" id="presetV" value="3" step="0.1"></div>
+      <div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" type="button" id="presetFlat">Flat, spacing D</button>
+      <button class="btn btn-ghost" type="button" id="presetTri">Equilateral triangle, side D</button>
+      <button class="btn btn-ghost" type="button" id="presetVert">Vertical double circuit</button>
+    </div>
+
+    <h3>Conductor coordinates</h3>
+    <div id="coordTable"></div>
+
+    <div class="toggle-row">
+      <input type="checkbox" id="groundOn">
+      <label for="groundOn" style="margin:0;">Include effect of earth (method of images) on capacitance — treat each y as height above ground</label>
+    </div>
+
+    <div class="note" id="gmdOut">GMD will appear here.</div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section>
+    <div class="step">STEP 3</div>
+    <h2>Resistivity &amp; length</h2>
+    <div class="row">
+      <div>
+        <label>Resistivity at 20°C, ρ (Ω·m ×10⁻⁸)</label>
+        <input type="number" id="rho" value="2.83" step="0.01">
+      </div>
+      <div>
+        <label>Line length, l (km)</label>
+        <input type="number" id="length" value="100" step="1">
+      </div>
+    </div>
+    <div class="note">Default 2.83×10⁻⁸ Ω·m = aluminium at 20°C. Use ≈1.72×10⁻⁸ for copper.</div>
+
+    <div class="toggle-row">
+      <input type="checkbox" id="tempOn">
+      <label for="tempOn" style="margin:0;">Correct resistivity for operating temperature</label>
+    </div>
+    <div id="panel-temp" class="adv hidden">
+      <div class="row3">
+        <div><label>Operating temperature (°C)</label><input type="number" id="tempOp" value="50" step="1"></div>
+        <div><label>Reference temperature (°C)</label><input type="number" id="tempRef" value="20" step="1"></div>
+        <div><label>Temperature coefficient, α (per °C)</label><input type="number" id="tempAlpha" value="0.00403" step="0.0001"></div>
+      </div>
+      <div class="note" style="margin-top:-6px;">ρ_T = ρ_ref · [1 + α·(T − T_ref)]. α ≈ 0.00403 for aluminium, 0.00393 for copper.</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-accent" type="button" id="loadExample">Load flowchart example</button>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="results">
+    <h2>Results</h2>
+    <div class="formula-box" id="formulaBlock"></div>
+    <div class="res-grid">
+      <div class="res-item"><div class="lbl">Total resistance</div><div class="val" id="outR">–</div></div>
+      <div class="res-item"><div class="lbl">Total inductance</div><div class="val" id="outL">–</div></div>
+      <div class="res-item"><div class="lbl">Total capacitance</div><div class="val" id="outC">–</div></div>
+      <div class="res-item hidden" id="itemCg"><div class="lbl">Capacitance (with ground)</div><div class="val" id="outCg">–</div></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Static page, no backend — works directly on GitHub Pages. All formulas derived from GMR / GMD geometry; no values are looked up from fixed tables.</footer>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const EPS0 = 8.854e-12;
+  const num = id => { const v = parseFloat($(id).value); return isNaN(v) ? 0 : v; };
+  const dist = (p1,p2) => Math.hypot(p1.x-p2.x, p1.y-p2.y);
+
+  function fmtEng(value, unit){
+    if(!isFinite(value)) return '–';
+    const table = [[1e3,'k'],[1,''],[1e-3,'m'],[1e-6,'µ'],[1e-9,'n'],[1e-12,'p']];
+    const abs = Math.abs(value);
+    for(const [scale,prefix] of table){
+      if(abs>=scale) return (value/scale).toFixed(abs/scale>=100?1:3)+' '+prefix+unit;
+    }
+    return (value/1e-12).toFixed(3)+' p'+unit;
+  }
+  function fmtNum(v,d=4){ return isFinite(v) ? v.toFixed(d) : '–'; }
+
+  /* ================= STEP 1 : conductor construction ================= */
+  $('condMode').addEventListener('change', ()=>{
+    const v = $('condMode').value;
+    ['solid','bundle','composite','custom'].forEach(m=> $('panel-'+m).classList.toggle('hidden', m!==v));
+    recalc();
+  });
+  document.querySelectorAll('#panel-solid input,#panel-bundle input,#panel-composite input,#panel-custom textarea')
+    .forEach(el=> el.addEventListener('input', recalc));
+
+  function bundleGMR(n, selfDist, A){
+    // n sub-conductors equally spaced on a ring of radius A; selfDist = own GMR or own radius
+    if(n<=1) return selfDist;
+    return Math.pow(n*selfDist*Math.pow(A, n-1), 1/n);
+  }
+
+  function conductorGeometry(){
+    const mode = $('condMode').value;
+    if(mode==='solid'){
+      const r = num('solidR')/1000;
+      return {GMR:0.7788*r, rEq:r, area:Math.PI*r*r, note:`solid conductor, r = ${num('solidR')} mm`};
+    }
+    if(mode==='bundle'){
+      const n = Math.max(2, Math.round(num('bundleN')));
+      const rs = num('bundleR')/1000;
+      const d = num('bundleD')/1000;
+      const A = d/(2*Math.sin(Math.PI/n));
+      const GMR = bundleGMR(n, 0.7788*rs, A);
+      const rEq = bundleGMR(n, rs, A);
+      const area = n*Math.PI*rs*rs;
+      return {GMR, rEq, area, note:`${n}-bundle, rₛ = ${num('bundleR')} mm, d = ${num('bundleD')} mm`};
+    }
+    if(mode==='composite'){
+      const n = Math.max(3, Math.round(num('compN')));
+      const rs = num('compR')/1000;
+      const A = 2*rs; // outer ring touches central non-conducting strand
+      const GMR = bundleGMR(n, 0.7788*rs, A);
+      const rEq = A+rs; // physical outer radius
+      const area = n*Math.PI*rs*rs;
+      return {GMR, rEq, area, note:`${n}/1 composite, rₛ = ${num('compR')} mm`};
+    }
+    // custom
+    const lines = $('customStrands').value.split('\n').map(l=>l.trim()).filter(Boolean);
+    const strands = lines.map(l=>{
+      const p = l.split(',').map(s=>parseFloat(s.trim()));
+      return {x:(p[0]||0)/1000, y:(p[1]||0)/1000, r:(p[2]||0)/1000};
+    });
+    const N = strands.length;
+    if(N===0) return {GMR:NaN, rEq:NaN, area:0, note:'no strands defined'};
+    let prodGMR=1, prodR=1, area=0;
+    for(let i=0;i<N;i++){
+      area += Math.PI*strands[i].r*strands[i].r;
+      for(let j=0;j<N;j++){
+        const dGMR = (i===j) ? 0.7788*strands[i].r : dist(strands[i],strands[j]);
+        const dR   = (i===j) ? strands[i].r        : dist(strands[i],strands[j]);
+        prodGMR *= dGMR; prodR *= dR;
+      }
+    }
+    const GMR = Math.pow(prodGMR, 1/(N*N));
+    const rEq = Math.pow(prodR, 1/(N*N));
+    return {GMR, rEq, area, note:`custom, ${N} strands`};
+  }
+
+  /* ================= STEP 2 : phase / circuit geometry ================= */
+  $('systemType').addEventListener('change', ()=>{ buildCoordTable(); recalc(); });
+  $('circuits').addEventListener('input', ()=>{ buildCoordTable(); recalc(); });
+  $('groundOn').addEventListener('change', recalc);
+
+  function phaseLabels(){ return $('systemType').value==='single' ? ['1','2'] : ['A','B','C']; }
+
+  function buildCoordTable(preserve){
+    const labels = phaseLabels();
+    const circuits = Math.min(6, Math.max(1, Math.round(num('circuits'))||1));
+    let html = '<table><tr><th>Conductor</th><th>x (m)</th><th>y (m)</th></tr>';
+    labels.forEach(ph=>{
+      for(let c=1;c<=circuits;c++){
+        const id = ph+c;
+        const label = circuits>1 ? `${ph}${c}` : ph;
+        html += `<tr><td>${label}</td>
+          <td><input type="number" step="0.1" id="x_${id}" value="0"></td>
+          <td><input type="number" step="0.1" id="y_${id}" value="0"></td></tr>`;
+      }
+    });
+    html += '</table>';
+    $('coordTable').innerHTML = html;
+    document.querySelectorAll('#coordTable input').forEach(el=> el.addEventListener('input', recalc));
+  }
+
+  function getPhaseGroups(){
+    const labels = phaseLabels();
+    const circuits = Math.min(6, Math.max(1, Math.round(num('circuits'))||1));
+    return labels.map(ph=>{
+      const group=[];
+      for(let c=1;c<=circuits;c++){
+        const id = ph+c;
+        group.push({x:num('x_'+id), y:num('y_'+id)});
+      }
+      return group;
+    });
+  }
+
+  // generic self/mutual geometric-mean distance engine
+  function selfMutual(phaseGroups, selfDist){
+    const k = phaseGroups.length;
+    const selfPerPhase = phaseGroups.map(group=>{
+      const n = group.length;
+      let prod=1;
+      for(let i=0;i<n;i++) for(let j=0;j<n;j++){
+        prod *= (i===j) ? selfDist : dist(group[i], group[j]);
+      }
+      return Math.pow(prod, 1/(n*n));
+    });
+    const Ds = Math.pow(selfPerPhase.reduce((a,b)=>a*b,1), 1/k);
+
+    let mutProd=1, pairs=0;
+    for(let g=0; g<k; g++) for(let h=g+1; h<k; h++){
+      const A=phaseGroups[g], B=phaseGroups[h];
+      let p=1, c=0;
+      for(const ca of A) for(const cb of B){ p*=dist(ca,cb); c++; }
+      mutProd *= Math.pow(p,1/c); pairs++;
+    }
+    const GMD = pairs>0 ? Math.pow(mutProd, 1/pairs) : NaN;
+    return {GMD, Ds};
+  }
+
+  // ground-image self/mutual (no self-distance substitution needed — real conductor to its own image is never zero)
+  function groundSelfMutual(phaseGroups){
+    const k = phaseGroups.length;
+    const images = phaseGroups.map(g=>g.map(p=>({x:p.x, y:-p.y})));
+
+    const selfPerPhase = phaseGroups.map((group,idx)=>{
+      const img = images[idx];
+      const n = group.length;
+      let prod=1;
+      for(let i=0;i<n;i++) for(let j=0;j<n;j++) prod *= dist(group[i], img[j]);
+      return Math.pow(prod, 1/(n*n));
+    });
+    const Hs = Math.pow(selfPerPhase.reduce((a,b)=>a*b,1), 1/k);
+
+    let mutProd=1, pairs=0;
+    for(let g=0; g<k; g++) for(let h=g+1; h<k; h++){
+      const A=phaseGroups[g], B=images[h];
+      let p=1, c=0;
+      for(const ca of A) for(const cb of B){ p*=dist(ca,cb); c++; }
+      mutProd *= Math.pow(p,1/c); pairs++;
+    }
+    const GMDp = pairs>0 ? Math.pow(mutProd, 1/pairs) : NaN;
+    return {Hs, GMDp};
+  }
+
+  /* ================= presets ================= */
+  function setCoord(id, x, y){
+    const xEl = $('x_'+id), yEl = $('y_'+id);
+    if(xEl) xEl.value = x;
+    if(yEl) yEl.value = y;
+  }
+  $('presetFlat').addEventListener('click', ()=>{
+    const D = num('presetD');
+    const labels = phaseLabels();
+    $('circuits').value = 1; buildCoordTable();
+    labels.forEach((ph,i)=> setCoord(ph+'1', i*D, 10));
+    recalc();
+  });
+  $('presetTri').addEventListener('click', ()=>{
+    if($('systemType').value!=='three'){ $('systemType').value='three'; }
+    const D = num('presetD');
+    $('circuits').value = 1; buildCoordTable();
+    setCoord('A1', 0, 10);
+    setCoord('B1', D, 10);
+    setCoord('C1', D/2, 10 + D*0.8660254);
+    recalc();
+  });
+  $('presetVert').addEventListener('click', ()=>{
+    if($('systemType').value!=='three'){ $('systemType').value='three'; }
+    const Dh = num('presetD'), Dv = num('presetV');
+    $('circuits').value = 2; buildCoordTable();
+    setCoord('A1', 0, 2*Dv+4); setCoord('B1', 0, Dv+4); setCoord('C1', 0, 4);
+    setCoord('A2', Dh, 2*Dv+4); setCoord('B2', Dh, Dv+4); setCoord('C2', Dh, 4);
+    recalc();
+  });
+
+  /* ================= STEP 3 : resistivity / length / temperature ================= */
+  $('tempOn').addEventListener('change', ()=>{
+    $('panel-temp').classList.toggle('hidden', !$('tempOn').checked);
+    recalc();
+  });
+  document.querySelectorAll('#panel-temp input,#rho,#length').forEach(el=> el && el.addEventListener('input', recalc));
+
+  /* ================= main calculation ================= */
+  function recalc(){
+    const cond = conductorGeometry();
+    const groups = getPhaseGroups();
+    if(groups.some(g=>g.length===0)) return;
+
+    const {GMD, Ds} = selfMutual(groups, cond.GMR);
+    const {GMD: GMDc, Ds: DsC} = selfMutual(groups, cond.rEq);
+
+    let rho = num('rho')*1e-8;
+    if($('tempOn').checked){
+      const T = num('tempOp'), Tref = num('tempRef'), a = num('tempAlpha');
+      rho = rho*(1+a*(T-Tref));
+    }
+    const lengthM = num('length')*1000;
+    const circuits = Math.min(6, Math.max(1, Math.round(num('circuits'))||1));
+    const areaEff = cond.area*circuits;
+
+    const R = areaEff>0 ? (rho/areaEff)*lengthM : NaN;
+    const L = 2e-7*Math.log(GMD/Ds)*lengthM;
+    const C = (2*Math.PI*EPS0/Math.log(GMDc/DsC))*lengthM;
+
+    $('gmrOut').innerHTML = `GMR = <b>${fmtNum(cond.GMR*1000)} mm</b> · equivalent radius = <b>${fmtNum(cond.rEq*1000)} mm</b> (${cond.note})`;
+    $('gmdOut').innerHTML = `GMD = <b>${fmtNum(GMD)} m</b> · self-GMD (L) = <b>${fmtNum(Ds*1000)} mm</b> · self-distance (C) = <b>${fmtNum(DsC*1000)} mm</b>`;
+
+    $('outR').textContent = fmtEng(R,'Ω');
+    $('outL').textContent = fmtEng(L,'H');
+    $('outC').textContent = fmtEng(C,'F');
+
+    let formula =
+`R' = ρ / A                          (A = total conducting area per phase)
+L' = 2×10⁻⁷ · ln(GMD / Dₛ)           H/m per phase
+C' = 2π·ε₀ / ln(GMD / D_C)           F/m per phase (line-to-neutral)`;
+
+    if($('groundOn').checked){
+      const {Hs, GMDp} = groundSelfMutual(groups);
+      const Cg = (2*Math.PI*EPS0/(Math.log(GMDc/DsC) - Math.log(GMDp/Hs)))*lengthM;
+      $('itemCg').classList.remove('hidden');
+      $('outCg').textContent = fmtEng(Cg,'F');
+      formula += `\nC'_ground = 2π·ε₀ / [ln(GMD/D_C) − ln(GMD'/H')]   (method of images, y = height above ground)`;
+    } else {
+      $('itemCg').classList.add('hidden');
+    }
+    $('formulaBlock').textContent = formula;
+  }
+
+  /* ================= example ================= */
+  $('loadExample').addEventListener('click', ()=>{
+    $('condMode').value='bundle'; $('condMode').dispatchEvent(new Event('change'));
+    $('bundleN').value=2; $('bundleR').value=15.2; $('bundleD').value=400;
+    $('systemType').value='three'; $('circuits').value=1; buildCoordTable();
+    setCoord('A1', 0, 10); setCoord('B1', 8, 10); setCoord('C1', 16, 10);
+    $('groundOn').checked=false;
+    $('rho').value=2.83; $('length').value=150; $('tempOn').checked=false;
+    $('panel-temp').classList.add('hidden');
+    recalc();
+  });
+
+  /* ================= init ================= */
+  buildCoordTable();
+  setCoord('A1', 0, 10); setCoord('B1', 8, 10); setCoord('C1', 16, 10);
+  recalc();
+})();
+</script>
+</body>
+</html>
